@@ -577,7 +577,7 @@ sequenceDiagram
     participant API as API Node
     participant Cond as Condition Node
     participant Human as Approval Node
-    participant End as End Node
+    participant Finish as End Node
 
     User->>Trigger: Start Workflow
 
@@ -601,6 +601,5 @@ sequenceDiagram
         Cond-->>Engine: Continue
     end
 
-    Cond->>End: Final Payload
-    End-->>User: Workflow Result
-```
+    Cond->>Finish: Final Payload
+    Finish-->>User: Workflow Result

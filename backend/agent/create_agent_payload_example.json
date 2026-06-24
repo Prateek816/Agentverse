@@ -1,0 +1,271 @@
+{
+  "_comment": "Complete CreateAgentRequest payload — AI Sales Assistant Agent",
+
+  "workspace_id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+  "created_by":   "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+
+  "identity": {
+    "name":        "Aria — Sales Assistant",
+    "slug":        "aria-sales-assistant",
+    "description": "Qualifies inbound leads, answers product questions, and books demos.",
+    "tags":        ["sales", "crm", "lead-gen"],
+    "avatar": {
+      "url":      "https://cdn.example.com/avatars/aria.png",
+      "emoji":    null,
+      "bg_color": "#4F46E5"
+    },
+    "visibility": "workspace",
+    "version":    "1.0.0"
+  },
+
+  "llm": {
+    "provider":        "anthropic",
+    "model_id":        "claude-sonnet-4-6",
+    "credentials_ref": "ANTHROPIC_API_KEY",
+    "base_url":        null,
+    "api_version":     null,
+    "temperature":     0.5,
+    "top_p":           null,
+    "top_k":           null,
+    "max_tokens":      4096,
+    "max_input_tokens": 100000,
+    "stop_sequences":  [],
+    "seed":            null,
+    "stream":          true,
+    "timeout_seconds": 60.0,
+    "retry_policy": {
+      "max_attempts":    3,
+      "backoff_seconds": 1.5,
+      "retry_on":        ["rate_limit_error", "server_error"]
+    },
+    "fallback": {
+      "provider":    "openai",
+      "model_id":    "gpt-4o-mini",
+      "temperature": 0.5,
+      "max_tokens":  2048
+    },
+    "extra_params": {
+      "thinking": { "type": "enabled", "budget_tokens": 2000 }
+    }
+  },
+
+  "prompt": {
+    "system_prompt": "You are Aria, a professional sales assistant for Acme Corp. Your job is to qualify inbound leads by understanding their use case, company size, and timeline. Always be concise, friendly, and focused. Never discuss competitors. If the user asks about pricing, direct them to schedule a demo.",
+    "human_prefix":  "Customer",
+    "ai_prefix":     "Aria",
+    "few_shot_examples": [
+      {
+        "input":    "How much does it cost?",
+        "output":   "Great question! Pricing varies based on your team size and use case. I'd love to set up a quick demo so we can give you an accurate quote — does that sound good?",
+        "rationale": "Deflect pricing to demo without being evasive."
+      }
+    ],
+    "variables": [
+      {
+        "name":        "company_name",
+        "description": "Name of the prospect's company",
+        "default":     null,
+        "required":    false
+      }
+    ],
+    "chain_of_thought": false,
+    "language":         "en"
+  },
+
+  "memory": {
+    "short_term": {
+      "enabled":          true,
+      "window_size":      30,
+      "max_token_budget": 12000,
+      "strategy":         "token_budget"
+    },
+    "rag": {
+      "enabled":              true,
+      "knowledge_base_ids":   ["b2c3d4e5-f6a7-8901-bcde-f12345678901"],
+      "top_k":                5,
+      "similarity_threshold": 0.72,
+      "reranker_enabled":     true,
+      "citation_mode":        "inline",
+      "embedding": {
+        "provider":   "openai",
+        "model_id":   "text-embedding-3-small",
+        "dimensions": 1536,
+        "batch_size": 100
+      }
+    }
+  },
+
+  "tools": {
+    "parallel_tool_calls": true,
+    "max_tool_iterations": 8,
+    "tool_choice":         "auto",
+    "tools": [
+      {
+        "tool_type": "builtin",
+        "config": {
+          "tool_id": "web_search",
+          "enabled": true,
+          "settings": { "max_results": 5, "safe_search": true }
+        }
+      },
+      {
+        "tool_type": "openapi",
+        "config": {
+          "spec_url":        "https://api.salesforce.com/openapi.json",
+          "credentials_ref": "SALESFORCE_TOKEN",
+          "allowed_ops":     ["createLead", "getLead", "searchAccounts"],
+          "denied_ops":      [],
+          "timeout_seconds": 20.0
+        }
+      },
+      {
+        "tool_type": "mcp",
+        "config": {
+          "server_id":       "calendly-mcp",
+          "transport":       "sse",
+          "endpoint":        "https://mcp.calendly.com/sse",
+          "command":         [],
+          "credentials_ref": "CALENDLY_API_KEY",
+          "allowed_tools":   ["create_booking", "get_availability"],
+          "auto_approve":    false
+        }
+      },
+      {
+        "tool_type": "function",
+        "config": {
+          "name":        "calculate_roi",
+          "description": "Calculates the estimated ROI for a prospect based on their team size and current tooling costs.",
+          "runtime":     "python3",
+          "code":        "def calculate_roi(team_size: int, monthly_cost: float) -> dict:\n    savings = team_size * 200\n    roi = ((savings - monthly_cost) / monthly_cost) * 100\n    return {'monthly_savings': savings, 'roi_percent': round(roi, 2)}",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "team_size":    { "type": "integer" },
+              "monthly_cost": { "type": "number" }
+            },
+            "required": ["team_size", "monthly_cost"]
+          },
+          "output_schema": {
+            "type": "object",
+            "properties": {
+              "monthly_savings": { "type": "number" },
+              "roi_percent":     { "type": "number" }
+            }
+          },
+          "timeout_ms": 3000,
+          "memory_mb":  128
+        }
+      },
+      {
+        "tool_type": "a2a",
+        "config": {
+          "target_agent_id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+          "capability":      "send_welcome_email",
+          "auth_mode":       "platform_token",
+          "credentials_ref": null,
+          "timeout_seconds": 30.0,
+          "max_hops":        2
+        }
+      }
+    ]
+  },
+
+  "guardrails": {
+    "content_policy": {
+      "enabled": true,
+      "categories": {
+        "pii":              "redact",
+        "toxic_language":   "block",
+        "prompt_injection": "block",
+        "competitor_mention": "warn"
+      },
+      "custom_rules": ["(?i)\\bfree trial\\b", "(?i)discount code"]
+    },
+    "topic_policy": {
+      "enabled":       true,
+      "allowed_topics": ["product features", "pricing", "demo scheduling", "ROI", "integrations"],
+      "denied_topics":  ["competitor pricing", "internal roadmap", "legal disputes"],
+      "off_topic_message": "I'm here to help with questions about Acme's products and services. For anything else, I'd suggest reaching out to our support team!"
+    },
+    "rate_limit": {
+      "enabled":             true,
+      "requests_per_minute": 30,
+      "requests_per_day":    500,
+      "max_input_tokens":    8000
+    },
+    "human_in_the_loop": {
+      "enabled":            true,
+      "trigger_on_tools":   ["createLead", "create_booking"],
+      "approval_timeout_s": 300,
+      "notify_channels":    ["slack", "email"]
+    }
+  },
+
+  "output": {
+    "format":              "json",
+    "json_schema": {
+      "schema_def": {
+        "type": "object",
+        "properties": {
+          "message":         { "type": "string" },
+          "lead_qualified":  { "type": "boolean" },
+          "next_action":     { "type": "string", "enum": ["schedule_demo", "send_resources", "escalate", "none"] },
+          "sentiment":       { "type": "string", "enum": ["positive", "neutral", "negative"] }
+        },
+        "required": ["message", "next_action"]
+      },
+      "strict": true
+    },
+    "streaming": {
+      "enabled":           true,
+      "chunk_size_tokens": 1
+    },
+    "max_response_tokens": 1024,
+    "post_processing":     [],
+    "language":            null
+  },
+
+  "workflow": {
+    "enabled":           false,
+    "workflow_id":       null,
+    "trigger":           "manual",
+    "cron":              null,
+    "webhook":           null,
+    "input_mapping":     {},
+    "output_mapping":    {},
+    "max_parallel_runs": 1
+  },
+
+  "observability": {
+    "tracing": {
+      "enabled":     true,
+      "provider":    "langfuse",
+      "endpoint":    "https://cloud.langfuse.com",
+      "sample_rate": 1.0
+    },
+    "log_inputs":         true,
+    "log_outputs":        true,
+    "log_tool_calls":     true,
+    "cost_tracking":      true,
+    "evaluation_enabled": true,
+    "feedback_enabled":   true
+  },
+
+  "multi_agent": {
+    "role":             "standalone",
+    "team_id":          null,
+    "collaborator_ids": [],
+    "delegation_depth": 1,
+    "consensus_mode":   "first_wins"
+  },
+
+  "deployment": {
+    "environment":    "production",
+    "region":         "us-east-1",
+    "replicas":       3,
+    "auto_scale":     true,
+    "idle_timeout_s": 180,
+    "timezone":       "America/New_York",
+    "whitelisted_ips": ["10.0.0.0/8", "203.0.113.0/24"]
+  }
+}

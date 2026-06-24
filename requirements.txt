@@ -1,0 +1,15 @@
+pytest
+
+fastapi
+slowapi
+python-jose
+bcrypt==4.0.1
+
+pydantic
+pydantic_settings
+
+sqlalchemy
+
+langchain_core
+langchain_text_splitters
+langchain_community
